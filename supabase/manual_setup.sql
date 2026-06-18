@@ -55,6 +55,7 @@ create table if not exists public.jobs (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   jd_text text not null default '',
+  is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
