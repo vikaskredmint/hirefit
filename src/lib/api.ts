@@ -116,4 +116,10 @@ export const api = {
       `/api/jobs/${jobId}/scoring-status`,
       { method: "GET" },
     ),
+  scoreCandidate: (candidateId: string) =>
+    request<Record<string, unknown>>(`/api/candidates/${candidateId}/score`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    }),
 };

@@ -11,12 +11,14 @@ import { STAGES, STAGE_LABEL, formatInr, type PipelineStage, type Tier } from "@
 import {
   Phone, MessageSquare, Mail, ExternalLink, FileText, MapPin,
   Briefcase, GraduationCap, Wallet, Clock, CheckCircle2, AlertTriangle, Flag, Send,
+  Sparkles, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 type Detail = {
   id: string;
+  job_id: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -115,6 +117,25 @@ export function CandidateDetail({
     },
   });
 
+  const [isScoring, setIsScoring] = useState(false);
+  const runScoring = async () => {
+    if (!candidateId) return;
+    setIsScoring(true);
+    try {
+      await api.scoreCandidate(candidateId);
+      toast.success("Candidate scored successfully");
+      qc.invalidateQueries({ queryKey: ["candidate", candidateId] });
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+      if (data?.job_id) {
+        qc.invalidateQueries({ queryKey: ["stats", data.job_id] });
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setIsScoring(false);
+    }
+  };
+
   const openResume = async () => {
     if (!data?.resume_url) { toast.error("No resume on file"); return; }
     // resume_url may be a storage path or full URL
@@ -195,7 +216,19 @@ export function CandidateDetail({
               {/* Why this score */}
               {data.match_scores ? (
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Why this score</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Why this score</h3>
+                    <Button
+                      onClick={runScoring}
+                      disabled={isScoring}
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {isScoring ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                      Re-score
+                    </Button>
+                  </div>
                   {data.match_scores.ai_summary && (
                     <p className="text-sm leading-relaxed text-foreground">{data.match_scores.ai_summary}</p>
                   )}
@@ -204,8 +237,12 @@ export function CandidateDetail({
                   <ReasonList items={data.match_scores.red_flags} Icon={Flag} tone="text-destructive" label="Red flags" />
                 </section>
               ) : (
-                <section className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Not scored yet. Hit "Score unscored candidates" on the dashboard.
+                <section className="rounded-md border border-dashed p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">Not scored yet. You can run scoring specifically for this candidate now.</p>
+                  <Button onClick={runScoring} disabled={isScoring} className="w-full gap-2" variant="outline">
+                    {isScoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    {isScoring ? "Scoring Candidate..." : "Score Candidate Now"}
+                  </Button>
                 </section>
               )}
 

@@ -31,8 +31,8 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-const server = app.listen(config.port, () => {
-  console.log(`HireFit backend listening on http://localhost:${config.port}`);
+const server = app.listen(config.port, "0.0.0.0", () => {
+  console.log(`HireFit backend listening on http://0.0.0.0:${config.port}`);
 });
 
 process.on("SIGTERM", () => {

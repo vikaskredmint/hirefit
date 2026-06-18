@@ -4,11 +4,11 @@ import { chatJson } from "../lib/ai-client.js";
 const rubric = `Return only valid JSON matching the required schema.
 
 Scoring rubric, weights matter:
-- Domain fit (30%) - BFSI, FinTech, Consumer products, Travel, Rewards, Loyalty, Customer Engagement, or Employee Benefits experience
-- Enterprise SaaS solution-selling evidence (25%) - proven solution selling to large enterprise clients, not SMB/transactional sales
-- Seniority & stakeholder engagement (15%) - evidence of engaging CXOs, business heads, marketing leaders, HR leaders, or procurement
-- Experience-band fit (15%) - JD wants 10-12 years; score full marks at 10-12, partial credit down to 7 and up to 15, low below/above that
-- Track record vs. targets (15%) - quota attainment, revenue growth %, named wins
+- Domain fit (30%) — BFSI, FinTech, Consumer products, Travel, Rewards, Loyalty, Customer Engagement, or Employee Benefits experience
+- Enterprise SaaS solution-selling evidence (25%) — proven solution selling to large enterprise clients, not SMB/transactional sales
+- Seniority & stakeholder engagement (15%) — evidence of engaging CXOs, business heads, marketing leaders, HR leaders, or procurement
+- Experience-band fit (15%) — JD wants 10–12 years; score full marks at 10-12, partial credit down to 7 and up to 15, low below/above that
+- Track record vs. targets (15%) — quota attainment, revenue growth %, named wins
 
 Required JSON schema:
 {
@@ -17,9 +17,9 @@ Required JSON schema:
   "domain_match_score": 0-100,
   "experience_match_score": 0-100,
   "seniority_match_score": 0-100,
-  "strengths": ["short bullet"],
-  "gaps": ["short bullet"],
-  "red_flags": ["short bullet"],
+  "strengths": ["short bullet", "..."],
+  "gaps": ["short bullet", "..."],
+  "red_flags": ["short bullet", "..."],
   "ai_summary": "2-3 sentence overall take"
 }
 

@@ -35,15 +35,20 @@ export function getScoringQueue() {
 }
 
 export async function enqueueCandidateScore(candidateId, index = 0) {
+  // BullMQ jobId must be a valid custom id. Some Redis/BullMQ setups reject ':'
+  // in jobId, which caused 500s during enqueue.
+  const jobIdSafe = `candidate-${String(candidateId)}`;
+
   return getScoringQueue().add(
     "score-candidate",
     { candidateId },
     {
-      jobId: `candidate:${candidateId}`,
+      jobId: jobIdSafe,
       delay: index * 5000,
     },
   );
 }
+
 
 export async function queueCounts() {
   return getScoringQueue().getJobCounts("waiting", "delayed", "active", "failed", "completed");

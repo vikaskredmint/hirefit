@@ -85,7 +85,6 @@ export async function chatJson({ system, user }) {
 
     const body = await response.text().catch(() => "");
     failures.push({ provider: item.provider, model: item.model, status: response.status, body: body.slice(0, 300) });
-    if (![0, 408, 409, 425, 429, 500, 502, 503, 504].includes(response.status)) break;
   }
 
   const quotaOnly = failures.some((failure) => failure.status === 429);
