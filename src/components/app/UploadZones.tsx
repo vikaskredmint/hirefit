@@ -145,9 +145,9 @@ export function UploadZones({ jobId }: { jobId: string }) {
       />
       <DropZone
         title="Upload resumes"
-        hint="Drop multiple PDFs at once. We'll auto-match by filename."
+        hint="Drop multiple PDF, DOC or DOCX resumes at once. We'll auto-match by filename."
         Icon={FileText}
-        accept=".pdf,application/pdf"
+        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         multiple
         busy={uploadingResumes}
         onFiles={onPdfs}

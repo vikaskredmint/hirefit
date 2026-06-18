@@ -39,10 +39,10 @@ export const api = {
       { method: "POST", body: fd },
     );
   },
-  uploadResume: (candidateId: string, pdf: File) => {
+  uploadResume: (candidateId: string, resume: File) => {
     const fd = new FormData();
-    fd.append("file", pdf);
-    return request<{ resume_url: string; resume_text: string }>(
+    fd.append("file", resume);
+    return request<{ resume_url: string; resume_text: string; resume_analysis?: unknown; resume_file_type?: string }>(
       `/api/candidates/${candidateId}/resume`,
       { method: "POST", body: fd },
     );
