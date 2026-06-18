@@ -133,4 +133,38 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: "{}",
     }),
+
+  // ── Admin endpoints ─────────────────────────────────────────────────────
+  adminStats: () =>
+    request<{ totalJobs: number; activeJobs: number; totalCandidates: number; hired: number; interviewing: number }>(
+      "/api/admin/stats",
+      { method: "GET" },
+    ),
+  adminListJobs: () =>
+    request<Array<{ id: string; title: string; jd_text: string; created_at: string; is_active: boolean | null }>>(
+      "/api/admin/jobs",
+      { method: "GET" },
+    ),
+  adminDisableJob: (id: string) =>
+    request<{ id: string; title: string; is_active: boolean }>(`/api/admin/jobs/${id}/disable`, { method: "PATCH" }),
+  adminEnableJob: (id: string) =>
+    request<{ id: string; title: string; is_active: boolean }>(`/api/admin/jobs/${id}/enable`, { method: "PATCH" }),
+  adminDeleteJob: (id: string) =>
+    request<{ deleted: boolean }>(`/api/admin/jobs/${id}`, { method: "DELETE" }),
+  adminListCandidates: (jobId?: string) =>
+    request<Array<Record<string, unknown>>>(
+      `/api/admin/candidates${jobId ? `?jobId=${jobId}` : ""}`,
+      { method: "GET" },
+    ),
+  adminDeleteCandidate: (id: string) =>
+    request<{ deleted: boolean }>(`/api/admin/candidates/${id}`, { method: "DELETE" }),
+  adminCreateUser: (payload: { email: string; password: string; role: string }) =>
+    request<{ email: string; role: string; token: string; message: string }>(
+      "/api/admin/users",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    ),
 };

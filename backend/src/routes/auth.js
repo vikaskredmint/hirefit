@@ -5,7 +5,7 @@ import { asyncHandler, HttpError } from "../lib/http-error.js";
 
 export const authRouter = Router();
 
-const sign = (payload) => {
+export const sign = (payload) => {
   const secret = config.backendSharedSecret || config.supabaseServiceRoleKey;
   return crypto.createHmac("sha256", secret).update(payload).digest("hex");
 };

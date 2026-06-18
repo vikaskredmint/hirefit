@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { candidatesRouter } from "./routes/candidates.js";
 import { scoringRouter } from "./routes/scoring.js";
+import { adminRouter } from "./routes/admin.js";
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "hirefit-backend",
-    version: "v1.0.4-fallback-login",
+    version: "v1.1.0-admin-panel",
     admin_email: config.admin.email,
     admin_password_configured: !!config.admin.password,
     admin_password_length: config.admin.password ? config.admin.password.length : 0,
@@ -29,6 +30,7 @@ app.use("/api", authRouter);
 app.use("/api", requireInternalAuth, jobsRouter);
 app.use("/api", requireInternalAuth, candidatesRouter);
 app.use("/api", requireInternalAuth, scoringRouter);
+app.use("/api", adminRouter);
 
 app.use((err, _req, res, _next) => {
   const status = err.status || err.statusCode || 500;

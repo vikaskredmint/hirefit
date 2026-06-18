@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TierBadge } from "./TierBadge";
 import { STAGES, STAGE_LABEL, TIER_LABEL, formatInr, type PipelineStage, type Tier } from "@/lib/tiers";
-import { Search, MapPin, Briefcase, Clock, Mail, Inbox } from "lucide-react";
+import {
+  Search, MapPin, Briefcase, Clock, Mail, Inbox, Phone, MessageSquare, FileText, Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export type CandidateRow = {
@@ -25,6 +27,7 @@ export type CandidateRow = {
   notice_period: string | null;
   resume_headline: string | null;
   pipeline_stage: PipelineStage;
+  resume_url?: string | null;
   match_scores: { overall_score: number; tier: Tier } | null;
 };
 
@@ -49,6 +52,70 @@ const TIERS: Array<{ value: Tier | "all"; label: string }> = [
   { value: "possible_fit", label: TIER_LABEL.possible_fit },
   { value: "not_fit", label: TIER_LABEL.not_fit },
 ];
+
+// ── Quick action helpers ───────────────────────────────────────────────────
+function callCandidate(row: CandidateRow) {
+  if (!row.phone) { toast.error("No phone number on file"); return; }
+  api.addActivity(row.id, { action: "called" }).catch(() => {});
+  window.location.href = `tel:${row.phone}`;
+}
+
+function whatsappCandidate(row: CandidateRow) {
+  if (!row.phone) { toast.error("No phone number on file"); return; }
+  const phone = row.phone.replace(/\D/g, "");
+  const text = encodeURIComponent(
+    `Hi ${row.name.split(" ")[0]}, I'm from Kredmint Talent team. I came across your profile and would love to discuss an opportunity. Would you be open for a quick chat?`,
+  );
+  api.addActivity(row.id, { action: "sms_sent", notes: "WhatsApp message" }).catch(() => {});
+  window.open(`https://wa.me/${phone}?text=${text}`, "_blank", "noopener");
+}
+
+function openResume(row: CandidateRow) {
+  if (!row.resume_url) { toast.error("No resume on file"); return; }
+  if (/^https?:\/\//.test(row.resume_url)) {
+    window.open(row.resume_url, "_blank", "noopener");
+    return;
+  }
+  toast.error("Resume URL not accessible");
+}
+
+// ── QuickActions component ─────────────────────────────────────────────────
+function QuickActions({ row, onClick }: { row: CandidateRow; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <div className="flex items-center gap-1" onClick={onClick}>
+      <Button
+        variant="ghost"
+        size="icon"
+        title="Call"
+        className="h-7 w-7 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+        onClick={(e) => { e.stopPropagation(); callCandidate(row); }}
+        disabled={!row.phone}
+      >
+        <Phone className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        title="WhatsApp"
+        className="h-7 w-7 text-green-600 hover:bg-green-500/10 hover:text-green-700"
+        onClick={(e) => { e.stopPropagation(); whatsappCandidate(row); }}
+        disabled={!row.phone}
+      >
+        <MessageSquare className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        title="Resume"
+        className="h-7 w-7 text-sky-600 hover:bg-sky-500/10 hover:text-sky-700"
+        onClick={(e) => { e.stopPropagation(); openResume(row); }}
+        disabled={!row.resume_url}
+      >
+        <FileText className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
 
 export function CandidateList({
   jobId,
@@ -94,7 +161,6 @@ export function CandidateList({
     if (!emails.length) { toast.error("No email addresses in selection"); return; }
     const href = `mailto:?bcc=${encodeURIComponent(emails.join(","))}`;
     window.location.href = href;
-    // log activity
     Promise.all(Array.from(selected).map((cid) => api.addActivity(cid, { action: "email_sent", notes: "Bulk email" })))
       .catch((error) => console.error(error));
   };
@@ -154,17 +220,18 @@ export function CandidateList({
                   <th className="px-3 py-2.5 text-left">Score</th>
                   <th className="px-3 py-2.5 text-left">Tier</th>
                   <th className="px-3 py-2.5 text-left">Exp.</th>
-                  <th className="px-3 py-2.5 text-left">Current co.</th>
+                  <th className="px-3 py-2.5 text-left">CTC</th>
                   <th className="px-3 py-2.5 text-left">Notice</th>
                   <th className="px-3 py-2.5 text-left">Location</th>
                   <th className="px-3 py-2.5 text-left">Stage</th>
+                  <th className="px-3 py-2.5 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((r) => (
                   <tr
                     key={r.id}
-                    className="cursor-pointer border-t border-border/60 hover:bg-accent/40"
+                    className="cursor-pointer border-t border-border/60 hover:bg-accent/40 transition-colors"
                     onClick={() => onOpen(r.id)}
                   >
                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -183,10 +250,19 @@ export function CandidateList({
                     </td>
                     <td className="px-3 py-3">{r.match_scores ? <TierBadge tier={r.match_scores.tier} /> : <span className="text-xs text-muted-foreground">Unscored</span>}</td>
                     <td className="px-3 py-3 tabular-nums">{r.total_experience_years ?? "—"}y</td>
-                    <td className="px-3 py-3">{r.current_company ?? "—"}</td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground">
+                      {r.annual_salary_inr != null ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Wallet className="h-3 w-3" />{formatInr(r.annual_salary_inr)}
+                        </span>
+                      ) : "—"}
+                    </td>
                     <td className="px-3 py-3">{r.notice_period ?? "—"}</td>
                     <td className="px-3 py-3">{r.current_location ?? "—"}</td>
                     <td className="px-3 py-3 text-xs">{STAGE_LABEL[r.pipeline_stage]}</td>
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <QuickActions row={r} onClick={(e) => e.stopPropagation()} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -196,13 +272,16 @@ export function CandidateList({
           {/* Mobile cards */}
           <div className="space-y-2 md:hidden">
             {filtered.map((r) => (
-              <Card key={r.id} className="cursor-pointer p-4 active:bg-accent/40" onClick={() => onOpen(r.id)}>
-                <div className="flex items-start justify-between gap-3">
+              <Card key={r.id} className="p-4 space-y-3">
+                <div
+                  className="flex items-start justify-between gap-3 cursor-pointer"
+                  onClick={() => onOpen(r.id)}
+                >
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold">{r.name}</div>
                     <div className="line-clamp-2 text-xs text-muted-foreground">{r.current_designation ?? r.resume_headline ?? ""}</div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     {r.match_scores ? (
                       <>
                         <div className="text-xl font-bold tabular-nums">{r.match_scores.overall_score}</div>
@@ -213,11 +292,43 @@ export function CandidateList({
                     )}
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   {r.current_company && <span className="inline-flex items-center gap-1"><Briefcase className="h-3 w-3" />{r.current_company}</span>}
                   {r.current_location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{r.current_location}</span>}
                   {r.notice_period && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{r.notice_period}</span>}
-                  {r.annual_salary_inr != null && <span>CTC {formatInr(r.annual_salary_inr)}</span>}
+                  {r.annual_salary_inr != null && <span className="inline-flex items-center gap-1"><Wallet className="h-3 w-3" />CTC {formatInr(r.annual_salary_inr)}</span>}
+                </div>
+
+                {/* Quick action buttons on mobile */}
+                <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 text-xs h-8 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/10"
+                    onClick={(e) => { e.stopPropagation(); callCandidate(r); }}
+                    disabled={!r.phone}
+                  >
+                    <Phone className="h-3.5 w-3.5" /> Call
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 text-xs h-8 text-green-700 border-green-500/30 hover:bg-green-500/10"
+                    onClick={(e) => { e.stopPropagation(); whatsappCandidate(r); }}
+                    disabled={!r.phone}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 text-xs h-8 text-sky-700 border-sky-500/30 hover:bg-sky-500/10"
+                    onClick={(e) => { e.stopPropagation(); openResume(r); }}
+                    disabled={!r.resume_url}
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Resume
+                  </Button>
                 </div>
               </Card>
             ))}
