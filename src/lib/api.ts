@@ -159,12 +159,31 @@ export const api = {
   adminDeleteCandidate: (id: string) =>
     request<{ deleted: boolean }>(`/api/admin/candidates/${id}`, { method: "DELETE" }),
   adminCreateUser: (payload: { email: string; password: string; role: string }) =>
-    request<{ email: string; role: string; token: string; message: string }>(
+    request<{ email: string; role: string; createdAt?: string; message: string }>(
       "/api/admin/users",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       },
+    ),
+  adminListUsers: () =>
+    request<Array<{ email: string; role: string; createdAt: string | null }>>(
+      "/api/admin/users",
+      { method: "GET" },
+    ),
+  adminResetPassword: (email: string, payload: { password: string }) =>
+    request<{ success: boolean; message: string }>(
+      `/api/admin/users/${encodeURIComponent(email)}/reset-password`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    ),
+  adminDeleteUser: (email: string) =>
+    request<{ deleted: boolean }>(
+      `/api/admin/users/${encodeURIComponent(email)}`,
+      { method: "DELETE" },
     ),
 };

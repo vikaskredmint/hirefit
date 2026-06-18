@@ -53,7 +53,7 @@ function Dashboard() {
       const total = rows.length;
       const scored = scores.length;
       const strong = scores.filter((s) => s.tier === "strong_fit").length;
-      const contacted = rows.filter((r) => ["contacted", "interviewing", "offered", "hired"].includes(r.pipeline_stage)).length;
+      const contacted = rows.filter((r) => ["contacted", "interviewing", "offered", "hired"].includes(r.pipeline_stage as string)).length;
       const avg = scored ? scores.reduce((a, s) => a + s.overall_score, 0) / scored : null;
       return { total, scored, strong, contacted, avg };
     },

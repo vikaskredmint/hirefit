@@ -425,26 +425,69 @@ function CandidatesTab({
 
 // ── Users Tab ─────────────────────────────────────────────────────────────
 function UsersTab() {
+  const qc = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("recruiter");
-  const [createdToken, setCreatedToken] = useState<string | null>(null);
+  
+  // Inline password reset state
+  const [resetEmail, setResetEmail] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => api.adminListUsers(),
+  });
 
   const createUser = useMutation({
     mutationFn: () => api.adminCreateUser({ email, password, role }),
     onSuccess: (data) => {
-      toast.success(`User ${data.email} created`);
-      setCreatedToken(data.token);
+      toast.success(data.message || `User ${data.email} created`);
       setEmail("");
       setPassword("");
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
 
+  const deleteUser = useMutation({
+    mutationFn: (email: string) => api.adminDeleteUser(email),
+    onSuccess: () => {
+      toast.success("User deleted");
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: ({ email, pass }: { email: string; pass: string }) =>
+      api.adminResetPassword(email, { password: pass }),
+    onSuccess: (data) => {
+      toast.success(data.message || "Password reset successfully");
+      setResetEmail(null);
+      setNewPassword("");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const handleResetPassword = (email: string) => {
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    resetPassword.mutate({ email, pass: newPassword });
+  };
+
+  const ROLE_COLORS: Record<string, string> = {
+    super_admin: "bg-violet-500/15 text-violet-700 border-violet-500/30",
+    hiring_manager: "bg-sky-500/15 text-sky-700 border-sky-500/30",
+    recruiter: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Create user form */}
-      <Card className="p-6 space-y-4">
+      <Card className="p-6 space-y-4 h-fit">
         <div className="flex items-center gap-2.5">
           <UserPlus className="h-5 w-5 text-primary" />
           <h2 className="font-semibold">Create New User</h2>
@@ -495,45 +538,107 @@ function UsersTab() {
           {createUser.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
           Create User
         </Button>
-
-        {createdToken && (
-          <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-              <CheckCircle className="h-4 w-4" />
-              User created — share token below
-            </div>
-            <code className="block break-all text-xs bg-background rounded p-2 border border-border">
-              {createdToken}
-            </code>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs"
-              onClick={() => { navigator.clipboard.writeText(createdToken); toast.success("Copied!"); }}
-            >
-              Copy token
-            </Button>
-          </div>
-        )}
       </Card>
 
-      {/* Info card */}
+      {/* Users List card */}
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2.5">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <Users className="h-5 w-5 text-primary" />
           <h2 className="font-semibold">Current Users</h2>
         </div>
-        <div className="rounded-lg border border-border/60 divide-y divide-border/60">
-          <div className="flex items-center justify-between p-3">
-            <div>
-              <div className="text-sm font-medium">vikas.raiexp@gmail.com</div>
-              <div className="text-xs text-muted-foreground">Super Admin</div>
-            </div>
-            <Badge className="bg-violet-500/15 text-violet-700 border-violet-500/30">Super Admin</Badge>
+        
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
           </div>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Additional users created here receive a JWT token for API access. Full multi-user auth can be enabled by connecting Supabase Auth.
+        ) : (
+          <div className="rounded-lg border border-border/60 divide-y divide-border/60 max-h-[400px] overflow-y-auto">
+            {users.map((user) => {
+              const isDefaultAdmin = user.email.toLowerCase() === "vikas.raiexp@gmail.com";
+              return (
+                <div key={user.email} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-sm font-medium break-all">{user.email}</div>
+                      <div className="text-xs text-muted-foreground capitalize mt-0.5">
+                        {user.role.replace("_", " ")}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={`text-[10px] uppercase font-semibold tracking-wide ${ROLE_COLORS[user.role] ?? ""}`}>
+                        {user.role.replace("_", " ")}
+                      </Badge>
+                      {!isDefaultAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete ${user.email}?`)) {
+                              deleteUser.mutate(user.email);
+                            }
+                          }}
+                          disabled={deleteUser.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Password Reset Action */}
+                  {!isDefaultAdmin && (
+                    <div className="pt-1">
+                      {resetEmail === user.email ? (
+                        <div className="space-y-2">
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="password"
+                              placeholder="New password (min 8 chars)"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="h-8 text-xs max-w-[220px]"
+                              autoFocus
+                            />
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => handleResetPassword(user.email)}
+                              disabled={resetPassword.isPending}
+                            >
+                              {resetPassword.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => { setResetEmail(null); setNewPassword(""); }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5"
+                          onClick={() => { setResetEmail(user.email); setNewPassword(""); }}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Reset Password
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground leading-relaxed pt-2">
+          Users created here can log in immediately using their email and password. The default Super Admin credentials are managed via environment variables.
         </p>
       </Card>
     </div>
