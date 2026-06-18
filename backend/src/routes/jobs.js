@@ -10,6 +10,7 @@ jobsRouter.get(
     const { data, error } = await supabase
       .from("jobs")
       .select("id,title,jd_text,created_at")
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
     if (error) throw error;
     res.json(data || []);
