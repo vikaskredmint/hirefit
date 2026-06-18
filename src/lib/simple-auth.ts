@@ -33,7 +33,16 @@ export function clearSimpleSession() {
 }
 
 export async function loginSimple(userId: string, password: string): Promise<SimpleSession> {
-  const base = (import.meta.env.VITE_API_BASE_URL ?? "").toString().replace(/\/+$/, "");
+  const envBase = (import.meta.env.VITE_API_BASE_URL ?? "").toString().trim();
+  let base = envBase;
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const isLocal = ["localhost", "127.0.0.1", "::1"].includes(hostname) || hostname.endsWith(".local");
+    if (!isLocal && (!envBase || envBase.includes("localhost") || envBase.includes("127.0.0.1"))) {
+      base = "https://hirefit-backend-iqcc.onrender.com";
+    }
+  }
+  base = base.replace(/\/+$/, "");
   if (!base) throw new Error("Backend URL missing. Set VITE_API_BASE_URL.");
 
   const res = await fetch(`${base}/api/auth/login`, {

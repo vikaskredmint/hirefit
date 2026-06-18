@@ -2,8 +2,19 @@
 // Set VITE_API_BASE_URL in .env when the backend is live. Until then,
 // these helpers throw a friendly error and the UI surfaces it as a toast.
 
-const RAW_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").toString().trim();
-const BASE = RAW_BASE.replace(/\/+$/, "");
+const getApiBaseUrl = () => {
+  const envBase = (import.meta.env.VITE_API_BASE_URL ?? "").toString().trim();
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const isLocal = ["localhost", "127.0.0.1", "::1"].includes(hostname) || hostname.endsWith(".local");
+    if (!isLocal && (!envBase || envBase.includes("localhost") || envBase.includes("127.0.0.1"))) {
+      return "https://hirefit-backend-iqcc.onrender.com";
+    }
+  }
+  return envBase;
+};
+
+const BASE = getApiBaseUrl().replace(/\/+$/, "");
 
 export const isBackendConfigured = () => BASE.length > 0;
 
