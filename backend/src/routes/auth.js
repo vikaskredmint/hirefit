@@ -27,11 +27,20 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const userId = String(req.body?.userId || req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
-    const expectedUser = config.admin.email.toLowerCase();
+    const expectedUser = config.admin.email.trim().toLowerCase();
     if (!config.admin.password) throw new HttpError(500, "SUPER_ADMIN_PASSWORD is not configured");
-    const validPasswords = new Set([config.admin.password, ...config.admin.passwordAliases]);
+    const validPasswords = new Set([
+      config.admin.password.trim(),
+      ...config.admin.passwordAliases.map(p => p.trim())
+    ]);
+
+    console.log(`[Auth] Login attempt for: "${userId}"`);
+    console.log(`[Auth] Expected user: "${expectedUser}"`);
+    console.log(`[Auth] User match: ${userId === expectedUser}`);
+    console.log(`[Auth] Password length: ${password.length}, Expected: ${config.admin.password.trim().length}`);
 
     if (userId !== expectedUser || !validPasswords.has(password)) {
+      console.warn(`[Auth] Failed login attempt for "${userId}"`);
       throw new HttpError(401, "Invalid user id or password");
     }
 
