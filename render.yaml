@@ -31,6 +31,8 @@ services:
         sync: false
       - key: SUPER_ADMIN_PASSWORD
         sync: false
+      - key: SUPER_ADMIN_PASSWORD_ALIASES
+        sync: false
       - key: GITHUB_MODELS_TOKEN
         sync: false
       - key: GROQ_API_KEY
