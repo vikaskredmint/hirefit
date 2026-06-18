@@ -2,7 +2,7 @@
 # Deploy via: Dashboard → New → Blueprint → connect this repo
 
 services:
-  # ── Express API ───────────────────────────────────────────
+  # ── Express API (Runs both API and In-Memory Queue) ───────
   - type: web
     name: hirefit-backend
     runtime: node
@@ -40,50 +40,4 @@ services:
       - key: CORS_ORIGIN
         sync: false
       - key: REDIS_URL
-        fromService:
-          name: hirefit-redis
-          type: redis
-          property: connectionString
-
-  # ── BullMQ Background Worker ──────────────────────────────
-  - type: worker
-    name: hirefit-worker
-    runtime: node
-    plan: free
-    buildCommand: npm install
-    startCommand: npm run render:worker
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: S3_ENDPOINT
-        sync: false
-      - key: S3_REGION
-        value: ap-southeast-2
-      - key: S3_ACCESS_KEY_ID
-        sync: false
-      - key: S3_SECRET_ACCESS_KEY
-        sync: false
-      - key: S3_RESUME_BUCKET
-        value: resumes
-      - key: GITHUB_MODELS_TOKEN
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: OPENROUTER_API_KEY
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          name: hirefit-redis
-          type: redis
-          property: connectionString
-
-  # ── Redis for BullMQ ──────────────────────────────────────
-  - type: redis
-    name: hirefit-redis
-    plan: free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []   # only internal access
+        sync: false # Optional: Set only if using an external Redis provider like Upstash. Otherwise defaults to In-Memory.

@@ -12,7 +12,7 @@ export const config = {
   supabaseUrl: required("SUPABASE_URL"),
   supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
   backendSharedSecret: process.env.BACKEND_SHARED_SECRET || "",
-  redisUrl: process.env.REDIS_URL || "redis://127.0.0.1:6379",
+  redisUrl: process.env.REDIS_URL || "",
   s3: {
     endpoint: required("S3_ENDPOINT"),
     region: process.env.S3_REGION || "ap-southeast-2",
