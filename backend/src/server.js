@@ -17,6 +17,7 @@ app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "hirefit-backend",
+    version: "v1.0.4-fallback-login",
     admin_email: config.admin.email,
     admin_password_configured: !!config.admin.password,
     admin_password_length: config.admin.password ? config.admin.password.length : 0,
