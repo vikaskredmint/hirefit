@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { supabase } from "../lib/supabase-client.js";
 import { asyncHandler, HttpError } from "../lib/http-error.js";
 import { config } from "../config.js";
-import { sign } from "./auth.js";
+import { sign, hashPassword } from "./auth.js";
 
 export const adminRouter = Router();
 
@@ -145,14 +145,27 @@ adminRouter.patch(
 adminRouter.get(
   "/admin/users",
   asyncHandler(async (_req, res) => {
-    // Return the single configured admin user
-    res.json([
-      {
+    const { data: dbUsers, error } = await supabase
+      .from("allowed_emails")
+      .select("email,role,created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+
+    const allUsers = [...(dbUsers || [])].map(u => ({
+      email: u.email,
+      role: u.role,
+      createdAt: u.created_at
+    }));
+
+    // Ensure the default env admin is included if not already in the database
+    if (!allUsers.some(u => u.email.toLowerCase() === config.admin.email.toLowerCase())) {
+      allUsers.unshift({
         email: config.admin.email,
         role: "super_admin",
         createdAt: null,
-      },
-    ]);
+      });
+    }
+    res.json(allUsers);
   }),
 );
 
@@ -163,27 +176,78 @@ adminRouter.post(
     const password = String(req.body?.password || "").trim();
     const role = String(req.body?.role || "recruiter").trim();
 
-    if (!email || !password) throw new HttpError(400, "email and password required");
-    if (password.length < 8) throw new HttpError(400, "password must be at least 8 characters");
+    if (!email || !password) throw new HttpError(400, "Email and password required");
+    if (password.length < 8) throw new HttpError(400, "Password must be at least 8 characters");
 
-    // For the single-admin setup, generate a scoped token for new user
-    const payload = Buffer.from(
-      JSON.stringify({
+    // Do not allow creating/overwriting default super admin email from env
+    if (email === config.admin.email.trim().toLowerCase()) {
+      throw new HttpError(400, "Email matches the default environment Super Admin. You cannot overwrite it here.");
+    }
+
+    const { data, error } = await supabase
+      .from("allowed_emails")
+      .upsert({
         email,
-        role,
-        exp: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
-        tempPassword: password,
-      }),
-    ).toString("base64url");
+        password_hash: hashPassword(password),
+        role
+      }, { onConflict: "email" })
+      .select("email,role,created_at")
+      .single();
 
-    const token = `${payload}.${sign(payload)}`;
+    if (error) throw error;
 
     res.status(201).json({
-      email,
-      role,
-      token,
-      message: "User credentials generated. Share the token or set up proper auth.",
+      email: data.email,
+      role: data.role,
+      createdAt: data.created_at,
+      message: "User created successfully. They can now log in with their email and password."
     });
+  }),
+);
+
+adminRouter.post(
+  "/admin/users/:email/reset-password",
+  asyncHandler(async (req, res) => {
+    const email = req.params.email.trim().toLowerCase();
+    const password = String(req.body?.password || "").trim();
+
+    if (!password || password.length < 8) {
+      throw new HttpError(400, "Password must be at least 8 characters");
+    }
+
+    // Do not allow resetting the default env super admin via DB
+    if (email === config.admin.email.trim().toLowerCase()) {
+      throw new HttpError(400, "Default Super Admin password is set via environment variables and cannot be reset here.");
+    }
+
+    const { error } = await supabase
+      .from("allowed_emails")
+      .update({ password_hash: hashPassword(password) })
+      .eq("email", email);
+
+    if (error) throw error;
+
+    res.json({ success: true, message: `Password for ${email} has been reset.` });
+  }),
+);
+
+adminRouter.delete(
+  "/admin/users/:email",
+  asyncHandler(async (req, res) => {
+    const email = req.params.email.trim().toLowerCase();
+    
+    if (email === config.admin.email.trim().toLowerCase()) {
+      throw new HttpError(400, "Cannot delete the default Super Admin user.");
+    }
+
+    const { error } = await supabase
+      .from("allowed_emails")
+      .delete()
+      .eq("email", email);
+
+    if (error) throw error;
+
+    res.json({ deleted: true });
   }),
 );
 
