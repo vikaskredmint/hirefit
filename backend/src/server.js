@@ -14,7 +14,14 @@ app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "hirefit-backend" });
+  res.json({
+    ok: true,
+    service: "hirefit-backend",
+    admin_email: config.admin.email,
+    admin_password_configured: !!config.admin.password,
+    admin_password_length: config.admin.password ? config.admin.password.length : 0,
+    admin_password_aliases_count: config.admin.passwordAliases.length,
+  });
 });
 
 app.use("/api", authRouter);
