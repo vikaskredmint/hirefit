@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { JobSelector } from "@/components/app/JobSelector";
 import { StatCards, type Stats } from "@/components/app/StatCards";
 import { UploadZones } from "@/components/app/UploadZones";
@@ -9,7 +8,7 @@ import { ScoreButton } from "@/components/app/ScoreButton";
 import { CandidateList } from "@/components/app/CandidateList";
 import { CandidateDetail } from "@/components/app/CandidateDetail";
 import { Card } from "@/components/ui/card";
-import { isBackendConfigured } from "@/lib/api";
+import { api, isBackendConfigured } from "@/lib/api";
 import { AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_app/")({
@@ -32,8 +31,8 @@ function Dashboard() {
   const { data: firstJob } = useQuery({
     queryKey: ["jobs", "first"],
     queryFn: async () => {
-      const { data } = await supabase.from("jobs").select("id").order("created_at", { ascending: false }).limit(1);
-      return data?.[0]?.id ?? null;
+      const jobs = await api.listJobs();
+      return jobs[0]?.id ?? null;
     },
   });
   useEffect(() => {
@@ -47,12 +46,7 @@ function Dashboard() {
     queryKey: ["stats", jobId],
     queryFn: async (): Promise<Stats> => {
       if (!jobId) return { total: 0, scored: 0, strong: 0, contacted: 0, avg: null };
-      const { data, error } = await supabase
-        .from("candidates")
-        .select("id, pipeline_stage, match_scores(overall_score, tier)")
-        .eq("job_id", jobId);
-      if (error) throw error;
-      const rows = data ?? [];
+      const rows = await api.listCandidates(jobId);
       const scores = rows
         .map((r) => (Array.isArray(r.match_scores) ? r.match_scores[0] : r.match_scores))
         .filter((s): s is { overall_score: number; tier: string } => !!s);

@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { api, isBackendConfigured } from "@/lib/api";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 type Candidate = { id: string; name: string };
 
@@ -100,12 +99,7 @@ export function UploadZones({ jobId }: { jobId: string }) {
     }
     setUploadingResumes(true);
     try {
-      const { data: candidates, error } = await supabase
-        .from("candidates")
-        .select("id, name")
-        .eq("job_id", jobId);
-      if (error) throw error;
-      const list: Candidate[] = candidates ?? [];
+      const list = (await api.listCandidates(jobId)) as Candidate[];
 
       let matched = 0;
       let unmatched: string[] = [];

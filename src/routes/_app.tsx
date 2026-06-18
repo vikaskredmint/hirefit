@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet, useNavigate, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sparkles, LogOut } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
+import { clearSimpleSession } from "@/lib/simple-auth";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -45,7 +45,7 @@ function AppShell() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/auth" }); }}
+              onClick={() => { clearSimpleSession(); navigate({ to: "/auth" }); }}
               className="gap-1.5"
             >
               <LogOut className="h-3.5 w-3.5" /> Sign out

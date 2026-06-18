@@ -32,5 +32,9 @@ export const config = {
   admin: {
     email: process.env.SUPER_ADMIN_EMAIL || "vikas.raiexp@gmail.com",
     password: process.env.SUPER_ADMIN_PASSWORD || "",
+    passwordAliases: (process.env.SUPER_ADMIN_PASSWORD_ALIASES || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
   },
 };

@@ -18,6 +18,20 @@ const requireFile = (req) => {
   return req.file;
 };
 
+candidatesRouter.get(
+  "/jobs/:id/candidates",
+  asyncHandler(async (req, res) => {
+    const { data, error } = await supabase
+      .from("candidates")
+      .select(
+        "id,name,email,phone,current_location,current_company,current_designation,total_experience_years,annual_salary_inr,notice_period,resume_headline,pipeline_stage,match_scores(overall_score,tier)",
+      )
+      .eq("job_id", req.params.id);
+    if (error) throw error;
+    res.json(data || []);
+  }),
+);
+
 candidatesRouter.post(
   "/jobs/:id/candidates/import",
   upload.single("file"),
@@ -28,6 +42,71 @@ candidatesRouter.post(
 
     const result = await importCandidatesForJob({ job, file });
     res.json(result);
+  }),
+);
+
+candidatesRouter.get(
+  "/candidates/:id",
+  asyncHandler(async (req, res) => {
+    const { data, error } = await supabase
+      .from("candidates")
+      .select("*, job:jobs(title), match_scores(*)")
+      .eq("id", req.params.id)
+      .maybeSingle();
+    if (error) throw error;
+    res.json(data || null);
+  }),
+);
+
+candidatesRouter.patch(
+  "/candidates/:id",
+  asyncHandler(async (req, res) => {
+    const patch = {};
+    if (req.body?.pipeline_stage) patch.pipeline_stage = req.body.pipeline_stage;
+    if (!Object.keys(patch).length) throw new HttpError(400, "No supported fields to update");
+
+    const { data, error } = await supabase
+      .from("candidates")
+      .update(patch)
+      .eq("id", req.params.id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    res.json(data);
+  }),
+);
+
+candidatesRouter.get(
+  "/candidates/:id/activity",
+  asyncHandler(async (req, res) => {
+    const { data, error } = await supabase
+      .from("activity_log")
+      .select("id,action,notes,actor,created_at")
+      .eq("candidate_id", req.params.id)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  }),
+);
+
+candidatesRouter.post(
+  "/candidates/:id/activity",
+  asyncHandler(async (req, res) => {
+    const action = String(req.body?.action || "");
+    if (!action) throw new HttpError(400, "action is required");
+
+    const { data, error } = await supabase
+      .from("activity_log")
+      .insert({
+        candidate_id: req.params.id,
+        action,
+        notes: req.body?.notes ?? null,
+        actor: req.user?.email ?? req.body?.actor ?? null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json(data);
   }),
 );
 

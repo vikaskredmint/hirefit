@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
+import { LockKeyhole, Sparkles } from "lucide-react";
+import { getSimpleSession, loginSimple, setSimpleSession } from "@/lib/simple-auth";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -20,26 +20,27 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [userId, setUserId] = useState("vikas.raiexp@gmail.com");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
-    });
+    if (getSimpleSession()) navigate({ to: "/" });
   }, [navigate]);
 
-  const send = async () => {
-    if (!email.trim()) return;
-    setSending(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setSending(false);
-    if (error) { toast.error(error.message); return; }
-    setSent(true);
+  const signIn = async () => {
+    if (!userId.trim() || !password) return;
+    setBusy(true);
+    try {
+      const session = await loginSimple(userId.trim(), password);
+      setSimpleSession(session);
+      toast.success("Signed in");
+      navigate({ to: "/" });
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -53,37 +54,40 @@ function AuthPage() {
         </div>
         <h1 className="text-xl font-semibold">Sign in</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Enter your work email — we'll send you a magic link.
+          Enter your user id and password.
         </p>
-        {sent ? (
-          <div className="mt-6 rounded-md border border-border bg-secondary/40 p-4 text-sm">
-            Check <span className="font-medium">{email}</span> for a sign-in link.
+        <form
+          onSubmit={(e) => { e.preventDefault(); signIn(); }}
+          className="mt-6 space-y-3"
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="userId">User ID</Label>
+            <Input
+              id="userId"
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="vikas.raiexp@gmail.com"
+              autoFocus
+              required
+            />
           </div>
-        ) : (
-          <form
-            onSubmit={(e) => { e.preventDefault(); send(); }}
-            className="mt-6 space-y-3"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@kredmint.com"
-                autoFocus
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={sending}>
-              {sending ? "Sending…" : "Send magic link"}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Only pre-approved teammates can sign in.
-            </p>
-          </form>
-        )}
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full gap-2" disabled={busy}>
+            <LockKeyhole className="h-4 w-4" />
+            {busy ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
       </Card>
     </div>
   );

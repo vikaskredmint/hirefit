@@ -1,5 +1,6 @@
 import { config } from "./config.js";
 import { HttpError } from "./lib/http-error.js";
+import { verifySimpleToken } from "./routes/auth.js";
 
 export function requireInternalAuth(req, _res, next) {
   if (!config.backendSharedSecret) return next();
@@ -9,6 +10,12 @@ export function requireInternalAuth(req, _res, next) {
   const apiKey = req.get("x-backend-secret") || req.get("x-service-role-key") || bearer;
 
   if (apiKey === config.backendSharedSecret || apiKey === config.supabaseServiceRoleKey) {
+    return next();
+  }
+
+  const simpleUser = verifySimpleToken(bearer);
+  if (simpleUser) {
+    req.user = simpleUser;
     return next();
   }
 

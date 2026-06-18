@@ -21,7 +21,18 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
       "Scoring service isn't connected yet. Set VITE_API_BASE_URL once the Node backend is deployed.",
     );
   }
-  const res = await fetch(`${BASE}${path}`, init);
+  const headers = new Headers(init.headers);
+  const rawSession = typeof window !== "undefined" ? localStorage.getItem("hf:simple-auth") : null;
+  if (rawSession && !headers.has("authorization")) {
+    try {
+      const session = JSON.parse(rawSession) as { token?: string };
+      if (session.token) headers.set("authorization", `Bearer ${session.token}`);
+    } catch {
+      /* ignore bad local auth cache */
+    }
+  }
+
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new BackendError(text || `Request failed (${res.status})`, res.status);
@@ -31,6 +42,53 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
 }
 
 export const api = {
+  listJobs: () =>
+    request<Array<{ id: string; title: string; jd_text: string; created_at: string }>>(
+      "/api/jobs",
+      { method: "GET" },
+    ),
+  createJob: (payload: { title: string; jd_text: string }) =>
+    request<{ id: string; title: string; jd_text: string; created_at: string }>(
+      "/api/jobs",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    ),
+  listCandidates: (jobId: string) =>
+    request<Array<Record<string, unknown>>>(
+      `/api/jobs/${jobId}/candidates`,
+      { method: "GET" },
+    ),
+  getCandidate: (candidateId: string) =>
+    request<Record<string, unknown> | null>(
+      `/api/candidates/${candidateId}`,
+      { method: "GET" },
+    ),
+  updateCandidate: (candidateId: string, patch: Record<string, unknown>) =>
+    request<Record<string, unknown>>(
+      `/api/candidates/${candidateId}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      },
+    ),
+  listActivity: (candidateId: string) =>
+    request<Array<Record<string, unknown>>>(
+      `/api/candidates/${candidateId}/activity`,
+      { method: "GET" },
+    ),
+  addActivity: (candidateId: string, payload: { action: string; notes?: string | null }) =>
+    request<Record<string, unknown>>(
+      `/api/candidates/${candidateId}/activity`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    ),
   importCandidates: (jobId: string, xlsx: File) => {
     const fd = new FormData();
     fd.append("file", xlsx);

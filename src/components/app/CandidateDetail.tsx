@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +13,7 @@ import {
   Briefcase, GraduationCap, Wallet, Clock, CheckCircle2, AlertTriangle, Flag, Send,
 } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 type Detail = {
   id: string;
@@ -66,12 +66,7 @@ export function CandidateDetail({
     queryKey: ["candidate", candidateId],
     queryFn: async (): Promise<Detail | null> => {
       if (!candidateId) return null;
-      const { data, error } = await supabase
-        .from("candidates")
-        .select("*, job:jobs(title), match_scores(*)")
-        .eq("id", candidateId)
-        .maybeSingle();
-      if (error) throw error;
+      const data = await api.getCandidate(candidateId);
       if (!data) return null;
       return {
         ...data,
@@ -85,13 +80,7 @@ export function CandidateDetail({
     queryKey: ["activity", candidateId],
     queryFn: async (): Promise<Activity[]> => {
       if (!candidateId) return [];
-      const { data, error } = await supabase
-        .from("activity_log")
-        .select("id, action, notes, actor, created_at")
-        .eq("candidate_id", candidateId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      return (await api.listActivity(candidateId)) as Activity[];
     },
     enabled: !!candidateId,
   });
@@ -101,19 +90,14 @@ export function CandidateDetail({
 
   const logAction = async (action: Activity["action"], notes?: string) => {
     if (!candidateId) return;
-    const { data: userData } = await supabase.auth.getUser();
-    await supabase.from("activity_log").insert({
-      candidate_id: candidateId, action, notes: notes ?? null,
-      actor: userData.user?.email ?? null,
-    });
+    await api.addActivity(candidateId, { action, notes: notes ?? null });
     qc.invalidateQueries({ queryKey: ["activity", candidateId] });
   };
 
   const updateStage = useMutation({
     mutationFn: async (stage: PipelineStage) => {
       if (!candidateId) return;
-      const { error } = await supabase.from("candidates").update({ pipeline_stage: stage }).eq("id", candidateId);
-      if (error) throw error;
+      await api.updateCandidate(candidateId, { pipeline_stage: stage });
       await logAction("stage_changed", `→ ${STAGE_LABEL[stage]}`);
     },
     onSuccess: () => {
@@ -138,9 +122,7 @@ export function CandidateDetail({
       window.open(data.resume_url, "_blank", "noopener");
       return;
     }
-    const { data: signed } = await supabase.storage.from("resumes").createSignedUrl(data.resume_url, 60 * 10);
-    if (signed?.signedUrl) window.open(signed.signedUrl, "_blank", "noopener");
-    else toast.error("Could not open resume");
+    toast.error("Could not open resume");
   };
 
   const onCall = () => {

@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { config } from "./config.js";
 import { requireInternalAuth } from "./middleware.js";
+import { authRouter } from "./routes/auth.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { candidatesRouter } from "./routes/candidates.js";
 import { scoringRouter } from "./routes/scoring.js";
@@ -16,6 +17,7 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "hirefit-backend" });
 });
 
+app.use("/api", authRouter);
 app.use("/api", requireInternalAuth, jobsRouter);
 app.use("/api", requireInternalAuth, candidatesRouter);
 app.use("/api", requireInternalAuth, scoringRouter);

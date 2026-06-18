@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,13 +32,7 @@ export function useCandidates(jobId: string) {
   return useQuery({
     queryKey: ["candidates", jobId],
     queryFn: async (): Promise<CandidateRow[]> => {
-      const { data, error } = await supabase
-        .from("candidates")
-        .select(
-          "id, name, email, phone, current_location, current_company, current_designation, total_experience_years, annual_salary_inr, notice_period, resume_headline, pipeline_stage, match_scores(overall_score, tier)",
-        )
-        .eq("job_id", jobId);
-      if (error) throw error;
+      const data = await api.listCandidates(jobId);
       return (data ?? []).map((c) => ({
         ...c,
         match_scores: Array.isArray(c.match_scores) ? (c.match_scores[0] ?? null) : (c.match_scores ?? null),
@@ -101,9 +95,8 @@ export function CandidateList({
     const href = `mailto:?bcc=${encodeURIComponent(emails.join(","))}`;
     window.location.href = href;
     // log activity
-    supabase.from("activity_log").insert(
-      Array.from(selected).map((cid) => ({ candidate_id: cid, action: "email_sent" as const, notes: "Bulk email" })),
-    ).then(({ error }) => { if (error) console.error(error); });
+    Promise.all(Array.from(selected).map((cid) => api.addActivity(cid, { action: "email_sent", notes: "Bulk email" })))
+      .catch((error) => console.error(error));
   };
 
   return (

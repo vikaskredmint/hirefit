@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -27,28 +27,18 @@ export function JobSelector({
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["jobs"],
     queryFn: async (): Promise<Job[]> => {
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("id, title, jd_text, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      return api.listJobs();
     },
   });
 
   const create = useMutation({
     mutationFn: async () => {
       if (!title.trim()) throw new Error("Title is required");
-      const { data, error } = await supabase
-        .from("jobs")
-        .insert({ title: title.trim(), jd_text: jd.trim() })
-        .select("id, title, jd_text, created_at")
-        .single();
-      if (error) throw error;
-      return data;
+      return api.createJob({ title: title.trim(), jd_text: jd.trim() });
     },
     onSuccess: (job) => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["jobs", "first"] });
       onSelect(job.id);
       setOpen(false);
       setTitle("");

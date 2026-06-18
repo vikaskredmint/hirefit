@@ -4,6 +4,18 @@ import { asyncHandler, HttpError } from "../lib/http-error.js";
 
 export const jobsRouter = Router();
 
+jobsRouter.get(
+  "/jobs",
+  asyncHandler(async (_req, res) => {
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("id,title,jd_text,created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  }),
+);
+
 jobsRouter.post(
   "/jobs",
   asyncHandler(async (req, res) => {

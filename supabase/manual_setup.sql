@@ -26,11 +26,11 @@ create table if not exists public.allowed_emails (
   created_at timestamptz not null default now()
 );
 
-grant select on public.allowed_emails to authenticated;
+grant select on public.allowed_emails to anon, authenticated;
 grant all on public.allowed_emails to service_role;
 alter table public.allowed_emails enable row level security;
 drop policy if exists "Authenticated can read allow list" on public.allowed_emails;
-create policy "Authenticated can read allow list" on public.allowed_emails for select to authenticated using (true);
+create policy "Authenticated can read allow list" on public.allowed_emails for select to anon, authenticated using (true);
 
 insert into public.allowed_emails(email)
 values ('vikas.raiexp@gmail.com')
@@ -58,11 +58,11 @@ create table if not exists public.jobs (
   created_at timestamptz not null default now()
 );
 
-grant select, insert, update, delete on public.jobs to authenticated;
+grant select, insert, update, delete on public.jobs to anon, authenticated;
 grant all on public.jobs to service_role;
 alter table public.jobs enable row level security;
 drop policy if exists "Auth users manage jobs" on public.jobs;
-create policy "Auth users manage jobs" on public.jobs for all to authenticated using (true) with check (true);
+create policy "Auth users manage jobs" on public.jobs for all to anon, authenticated using (true) with check (true);
 
 create table if not exists public.candidates (
   id uuid primary key default gen_random_uuid(),
@@ -89,11 +89,11 @@ create table if not exists public.candidates (
 
 create index if not exists candidates_job_id_idx on public.candidates(job_id);
 create index if not exists candidates_stage_idx on public.candidates(pipeline_stage);
-grant select, insert, update, delete on public.candidates to authenticated;
+grant select, insert, update, delete on public.candidates to anon, authenticated;
 grant all on public.candidates to service_role;
 alter table public.candidates enable row level security;
 drop policy if exists "Auth users manage candidates" on public.candidates;
-create policy "Auth users manage candidates" on public.candidates for all to authenticated using (true) with check (true);
+create policy "Auth users manage candidates" on public.candidates for all to anon, authenticated using (true) with check (true);
 
 create table if not exists public.match_scores (
   id uuid primary key default gen_random_uuid(),
@@ -111,11 +111,11 @@ create table if not exists public.match_scores (
 );
 
 create index if not exists match_scores_candidate_idx on public.match_scores(candidate_id);
-grant select, insert, update, delete on public.match_scores to authenticated;
+grant select, insert, update, delete on public.match_scores to anon, authenticated;
 grant all on public.match_scores to service_role;
 alter table public.match_scores enable row level security;
 drop policy if exists "Auth users manage match_scores" on public.match_scores;
-create policy "Auth users manage match_scores" on public.match_scores for all to authenticated using (true) with check (true);
+create policy "Auth users manage match_scores" on public.match_scores for all to anon, authenticated using (true) with check (true);
 
 create table if not exists public.activity_log (
   id uuid primary key default gen_random_uuid(),
@@ -127,11 +127,11 @@ create table if not exists public.activity_log (
 );
 
 create index if not exists activity_log_candidate_idx on public.activity_log(candidate_id, created_at desc);
-grant select, insert, update, delete on public.activity_log to authenticated;
+grant select, insert, update, delete on public.activity_log to anon, authenticated;
 grant all on public.activity_log to service_role;
 alter table public.activity_log enable row level security;
 drop policy if exists "Auth users manage activity_log" on public.activity_log;
-create policy "Auth users manage activity_log" on public.activity_log for all to authenticated using (true) with check (true);
+create policy "Auth users manage activity_log" on public.activity_log for all to anon, authenticated using (true) with check (true);
 
 insert into storage.buckets (id, name, public)
 values ('resumes', 'resumes', false)
@@ -141,9 +141,9 @@ drop policy if exists "Auth read resumes" on storage.objects;
 drop policy if exists "Auth insert resumes" on storage.objects;
 drop policy if exists "Auth update resumes" on storage.objects;
 drop policy if exists "Auth delete resumes" on storage.objects;
-create policy "Auth read resumes" on storage.objects for select to authenticated using (bucket_id = 'resumes');
-create policy "Auth insert resumes" on storage.objects for insert to authenticated with check (bucket_id = 'resumes');
-create policy "Auth update resumes" on storage.objects for update to authenticated using (bucket_id = 'resumes') with check (bucket_id = 'resumes');
-create policy "Auth delete resumes" on storage.objects for delete to authenticated using (bucket_id = 'resumes');
+create policy "Auth read resumes" on storage.objects for select to anon, authenticated using (bucket_id = 'resumes');
+create policy "Auth insert resumes" on storage.objects for insert to anon, authenticated with check (bucket_id = 'resumes');
+create policy "Auth update resumes" on storage.objects for update to anon, authenticated using (bucket_id = 'resumes') with check (bucket_id = 'resumes');
+create policy "Auth delete resumes" on storage.objects for delete to anon, authenticated using (bucket_id = 'resumes');
 
 revoke execute on function public.enforce_email_allowlist() from public, anon, authenticated;
